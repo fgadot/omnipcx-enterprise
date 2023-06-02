@@ -1,6 +1,6 @@
 """
-File: didTranslator.
-Author: Frank Gadot <frank@hermes42.com.com>
+File: didTranslator.py
+Author: Frank Gadot <frank@hermes42.com>
 
 Copyright © 2023 Frank Gadot. All rights reserved.
 
@@ -28,6 +28,8 @@ This script reads the data from 2 files passed in argument:
 - The list of users, with 3 columns only (extension, lase name, first name)
 - Both files must be in TSV Format (Tabulation Separated) and have headers in the files (headers can be named anything)
 - TSV Files are the result of OmniVista 8770 export. You'll just need to clean up the files and remove any unwanted column.
+
+Ex: python didTranslator.py didTable userList
 """
 
 import csv
