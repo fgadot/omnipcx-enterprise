@@ -1,7 +1,11 @@
 import sys
 
 '''
-This script extra lines from 8770 Exports. It keeps the 2 first lines which 8770 usually need for import. 
+This script extract lines from 8770 Exports. It keeps the 2 first lines which 8770 usually need for import. 
+python script_name 8770_exported_file "keyword to look for (case sensitive)"
+ex: python extract_data.py keys.tsv "Voice Mail Supervision"
+-> This will create a new file with just the voicemail supervision keys. 
+Useful if you want to restore something specific. 
 '''
 
 def extract_data(input_file, keyword):
