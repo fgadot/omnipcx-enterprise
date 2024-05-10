@@ -1,5 +1,5 @@
 """
-File: didTranslator.py
+File: didTranslator.py  VERSION 2.0
 Author: Frank Gadot <frank@hermes42.com>
 
 Copyright © 2023 Frank Gadot. All rights reserved.
@@ -24,63 +24,104 @@ on the console put the output can be redirected toward a TSV (Tabulation Separat
 
 Description:
 This script reads the data from 2 files passed in argument:
-- The DID Translator table, with 4 columns only (external number, internal number, range, unique)
-- The list of users, with 3 columns only (extension, lase name, first name)
-- Both files must be in TSV Format (Tabulation Separated) and have headers in the files (headers can be named anything)
-- TSV Files are the result of OmniVista 8770 export. You'll just need to clean up the files and remove any unwanted column.
+- The DID Translator table
+- The list of users
+- Both files must be in TSV Format (Tabulation Separated)
+- TSV Files are the result of OmniVista 8770 export.
 
-Ex: python didTranslator.py didTable userList
+Ex: python didTranslator.py didTable.txt userList.txt
 """
 
 import csv
 import sys
 
+
+def process_did_file(filename):
+    headers = ["First External Number", "First Internal Number", "Range Size", "Unique Internal Number"]
+    header_indices = {header: None for header in headers}
+    data = []
+
+    with open(filename, 'r', newline='') as file:
+        reader = csv.reader(file, delimiter='\t')
+
+        # Locate headers
+        for row in reader:
+            for i, header in enumerate(row):
+                if header in header_indices:
+                    header_indices[header] = i
+            if None not in header_indices.values():
+                break
+
+        # Process data
+        for row in reader:
+            if len(row) < max(header_indices.values()) + 1:
+                continue
+            data.append([sanitize_field(row[header_indices[header]]) for header in headers])
+
+    return data
+
+
+def process_users_file(filename):
+    headers = ["Directory Number", "Directory name", "Directory First Name"]
+    header_indices = {header: None for header in headers}
+    directory = {}
+
+    with open(filename, 'r', newline='') as file:
+        reader = csv.reader(file, delimiter='\t')
+
+        # Locate headers
+        for row in reader:
+            for i, header in enumerate(row):
+                if header in header_indices:
+                    header_indices[header] = i
+            if None not in header_indices.values():
+                break
+
+        # Process data
+        for row in reader:
+            if len(row) < max(header_indices.values()) + 1:
+                continue
+            key = sanitize_field(row[header_indices["Directory Number"]])
+            first_name = sanitize_field(row[header_indices["Directory First Name"]])
+            last_name = sanitize_field(row[header_indices["Directory name"]])
+            directory[key] = (first_name, last_name)
+
+    return directory
+
+
+def sanitize_field(field):
+    """ Trims whitespace and maintains internal spaces only if there are multiple words in the field. """
+    return ' '.join(field.split())
+
+
 def read_and_process_files(file1_path, file2_path):
-    # Create a dictionary to store data from the second file
-    extension_dict = {}
-    with open(file2_path, 'r') as file:
-        reader = csv.reader(file, delimiter='\t')
-        next(reader)  # Skip the header row
+    did_data = process_did_file(file1_path)
+    user_data = process_users_file(file2_path)
 
-        for row in reader:
-            extension = row[0]
-            last_name = row[1]
-            first_name = row[2]
-            extension_dict[extension] = (last_name, first_name)
+    print("\t".join(["DID", "Extension", "First Name", "Last Name"]))
 
-    # Process the first file
-    with open(file1_path, 'r') as file:
-        reader = csv.reader(file, delimiter='\t')
-        next(reader)  # Skip the header row
+    for external, internal, range_size, unique in did_data:
+        range_size = int(range_size)
+        initial_internal = internal
+        for i in range(range_size):
+            first_name, last_name = user_data.get(internal, ("", ""))
+            # Prepare the output by ensuring no extra tabs are introduced
+            output = [external, internal, first_name if first_name else "", last_name if last_name else ""]
+            print("\t".join(output))
+            external = str(int(external) + 1).zfill(len(external)) if i < range_size - 1 else external
+            internal = str(int(initial_internal) + i + 1).zfill(
+                len(initial_internal)) if unique.lower() != "yes" else initial_internal
 
-        # Print the header row for the output
-        print("\t".join(["External", "Internal", "Range", "Unique", "Last Name", "First Name"]))
-
-        for row in reader:
-            external = row[0]
-            internal = row[1]
-            range_val = int(row[2])
-            unique = row[3]
-
-            while range_val >= 1:
-                # Get the matching last name and first name from the second file
-                last_name, first_name = extension_dict.get(internal, ("", ""))
-                print("\t".join([external, internal, str(range_val), unique, last_name, first_name]))
-                if range_val > 1:
-                    external = str(int(external) + 1).zfill(len(external))
-                if unique.lower() != "yes":
-                    internal = str(int(internal) + 1).zfill(len(internal))
-                range_val -= 1
 
 def main():
-    # Check command-line arguments
     if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} <file1.txt> <file2.txt>")
+        print(f"Usage: {sys.argv[0]} <file1_path> <file2_path>")
         sys.exit(1)
 
     file1_path = sys.argv[1]
     file2_path = sys.argv[2]
     read_and_process_files(file1_path, file2_path)
+
 
 if __name__ == "__main__":
     main()
